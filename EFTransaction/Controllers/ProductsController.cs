@@ -33,13 +33,21 @@ namespace EFTransaction.Controllers
                     cn.Open();
                     using (var tr = context.Database.Connection.BeginTransaction()) {
                         try {
+                            //1. ADO.NETで独自のSQL文を実行。
                             var sql = "UPDATE [Products] SET [Price] = [Price] * 1.1 ";
                             var cmd = cn.CreateCommand();
                             cmd.Transaction = tr;
                             cmd.CommandText = sql;
                             cmd.ExecuteNonQuery();
 
+                            //2. DbContextでProductsを更新。
+                            var product = context.Products
+                                                .FirstOrDefault();
+                            product.Price /= 1.1M;
+                            context.SaveChanges();
+
                             tr.Commit();
+
                         }
                         catch (Exception) {
                             tr.Rollback();
@@ -47,8 +55,8 @@ namespace EFTransaction.Controllers
                         }
                     }
                 }
-
             }
+
         }
 
         private IEnumerable<Product> GetProductList() {
