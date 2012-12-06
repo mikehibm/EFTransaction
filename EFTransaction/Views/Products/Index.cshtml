@@ -1,0 +1,31 @@
+﻿@model IEnumerable<EFTransaction.Models.Product>
+
+@{
+    ViewBag.Title = "Products";
+}
+
+<a href="/"><h2>@ViewBag.Title</h2></a>
+
+<div class="row">
+    <table class="table span4">
+        <tr>
+            <th>Product</th>
+            <th>Price</th>
+        </tr>
+
+    @foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.ProductName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Price)
+            </td>
+        </tr>
+    }
+    </table>
+</div>
+
+@using (Html.BeginForm("DoTest", "Products")) { 
+    <input type="submit" value="Add Price" class="btn" />
+}
