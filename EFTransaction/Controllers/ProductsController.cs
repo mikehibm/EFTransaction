@@ -3,7 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
+using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
+using System.Data.EntityClient;
+using System.Reflection;
+
+
 using EFTransaction.Models;
 
 namespace EFTransaction.Controllers
@@ -28,15 +36,29 @@ namespace EFTransaction.Controllers
         }
 
         private void UpdateProducts() {
-            using (var context = new MyEntities()) {
-                using (var cn = context.Database.Connection) {
-                    cn.Open();
-                    using (var tr = context.Database.Connection.BeginTransaction()) {
+
+            //EFと同じ接続文字列を使ってSqlConnectionを作成。
+            using (var sqlConnection = new SqlConnection(new MyEntities().Database.Connection.ConnectionString)) {
+
+                //作成済みのSqlConnectionを使ってDbContextを作成。
+                using (var context = new MyEntities(sqlConnection)) {
+
+                    //EntityConnectionのOpenメソッドを呼ぶ。
+                    IDbConnection entityConnection = ((IObjectContextAdapter)context).ObjectContext.Connection;
+                    entityConnection.Open();
+
+                    //EntityConnectionに対してトランザクションを開始。
+                    using (var tr = entityConnection.BeginTransaction()) {
                         try {
+                            //Reflectionを使ってEntityTransactionからSqlTransactionを取得する。
+                            var sqlTran = (SqlTransaction)tr.GetType().InvokeMember("StoreTransaction",
+                                                            BindingFlags.FlattenHierarchy | BindingFlags.NonPublic | BindingFlags.InvokeMethod
+                                                            | BindingFlags.Instance | BindingFlags.GetProperty | BindingFlags.NonPublic, null, tr, new object[0]);
+
                             //1. ADO.NETで独自のSQL文を実行。
                             var sql = "UPDATE [Products] SET [Price] = [Price] * 1.1 ";
-                            var cmd = cn.CreateCommand();
-                            cmd.Transaction = tr;
+                            var cmd = sqlConnection.CreateCommand();
+                            cmd.Transaction = sqlTran;
                             cmd.CommandText = sql;
                             cmd.ExecuteNonQuery();
 
@@ -56,6 +78,7 @@ namespace EFTransaction.Controllers
                     }
                 }
             }
+
 
         }
 
